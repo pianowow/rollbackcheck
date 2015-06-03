@@ -1,0 +1,5 @@
+make file walk recursive to handle multiple levels deep (like the unix directory)
+
+improve exception handling by showing the user something instead of failing quietly.
+
+eclipse plugin
