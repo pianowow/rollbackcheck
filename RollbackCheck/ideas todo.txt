@@ -1,3 +1,2 @@
-improve exception handling by showing the user something instead of failing quietly.
 
 eclipse plugin

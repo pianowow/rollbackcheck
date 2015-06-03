@@ -7,6 +7,10 @@ import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
@@ -23,6 +27,8 @@ public class RbController {
 	
 	Preferences prefs = Preferences.userRoot().node(this.getClass().getName());
 	private final String NL = System.getProperty("line.separator");
+	private Logger logger;
+	private final String loggerFN = "RollbackCheckError.log";
 	
 	public static void main(String[] args) {
 		new RbController();
@@ -36,6 +42,15 @@ public class RbController {
 		form.setTxtTrunk(prefs.get("trunkpath", ""));
 		form.toggleCompareEnabled();
 		form.setVisible(true);
+		logger = Logger.getLogger(this.getClass().getName());
+		Handler fh;
+		try {
+			fh = new FileHandler(loggerFN, true);  //true means append to existing log file
+			Logger.getLogger("").addHandler(fh);
+		} catch (SecurityException | IOException e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "Error, could not setup log file", "Log File Setup", JOptionPane.ERROR_MESSAGE);
+		}
 	}
 	
 	private class Listener implements ActionListener {
@@ -57,6 +72,11 @@ public class RbController {
 							form.setTxtRBText(path);
 						} catch (IOException e) {
 							e.printStackTrace();
+							logger.log(Level.SEVERE, "Rollback Folder open exception", e);
+							JOptionPane.showMessageDialog(null, 
+				                      "Error, could not open rollback folder." + NL + 
+				                      "Please see " + loggerFN + " for details.",
+				                      "Log File Setup", JOptionPane.ERROR_MESSAGE);
 						}
 					}
 					break;
@@ -70,6 +90,12 @@ public class RbController {
 							form.setTxtTrunk(path);
 						} catch (IOException e) {
 							e.printStackTrace();
+							logger.log(Level.SEVERE, "Trunk Folder open exception", e);
+							JOptionPane.showMessageDialog(null, 
+				                      "Error, could not open trunk folder." + NL + 
+				                      "Please see " + loggerFN + " for details.",
+				                      "Log File Setup", JOptionPane.ERROR_MESSAGE);
+							
 						}
 					}
 					break;
@@ -103,11 +129,11 @@ public class RbController {
 							System.out.println(checkPath);
 							File checkDir = new File(checkPath);
 							//check files in this directory
-							String[] rbSubFiles = checkDir.list( FileFileFilter.FILE);
+							String[] checkSubFiles = checkDir.list( FileFileFilter.FILE);
 							boolean printedDirectory = false;
-							for ( int i = 0; i < rbSubFiles.length; i++ ) {
-								String checkFilePath = FilenameUtils.concat(checkPath, rbSubFiles[i]);
-								String againstFilePath = FilenameUtils.concat(againstPath, rbSubFiles[i]);
+							for ( int i = 0; i < checkSubFiles.length; i++ ) {
+								String checkFilePath = FilenameUtils.concat(checkPath, checkSubFiles[i]);
+								String againstFilePath = FilenameUtils.concat(againstPath, checkSubFiles[i]);
 								File checkFile = new File(checkFilePath);
 								File againstFile = new File(againstFilePath);
 								try {
@@ -116,7 +142,7 @@ public class RbController {
 											message.append(checkPath + NL);	
 											printedDirectory = true;
 										}
-										message.append("      "+rbSubFiles[i] + NL);
+										message.append("      "+checkSubFiles[i] + NL);
 										difference = new ArrayList<File>();
 										difference.add(againstFile);
 										difference.add(checkDir);
@@ -125,7 +151,12 @@ public class RbController {
 									}
 								} catch (IOException e) {
 									e.printStackTrace();
-									System.out.println(rbSubFiles[i] + " exception");
+									System.out.println(checkSubFiles[i] + " exception");
+									logger.log(Level.SEVERE, checkSubFiles[i], e);
+									JOptionPane.showMessageDialog(null, 
+						                      "Error during file comparison." + NL + 
+						                      "Please see " + loggerFN + " for details.",
+						                      "Log File Setup", JOptionPane.ERROR_MESSAGE);									
 								}
 							}
 							String[] checkSubDirs = checkDir.list( DirectoryFileFilter.INSTANCE );
@@ -147,6 +178,8 @@ public class RbController {
 						System.out.println(message);
 					    int answer = JOptionPane.showConfirmDialog(form, message, "Replace rollback files?", JOptionPane.YES_NO_OPTION);
 					    if (answer == JOptionPane.YES_OPTION) {
+					    	boolean gotone = false;
+					    	boolean error = false;
 					        File trunkFile;
 					        File fileDest;
 					    	for (ArrayList<File> diffi : differences) {
@@ -155,12 +188,25 @@ public class RbController {
 					    		System.out.println("Moving " + trunkFile + " to " + fileDest);
 					    		try {
 					    			FileUtils.copyFileToDirectory(trunkFile, fileDest, true); //preserve file modification date
+					    			gotone = true;
 								} catch (IOException e) {
 									e.printStackTrace();
 									System.out.println(trunkFile + " to " + fileDest + " exception");
+									logger.log(Level.SEVERE, trunkFile.getAbsolutePath(), e);
+									JOptionPane.showMessageDialog(null, 
+						                      "Error during file copy." + NL + 
+						                      "Please see " + loggerFN + " for details.",
+						                      "Log File Setup", JOptionPane.ERROR_MESSAGE);		
+									error = true;
 								}
 					    	}
-					    	JOptionPane.showMessageDialog(null, "Replaced Successfully", "Compare Complete", JOptionPane.INFORMATION_MESSAGE);
+					    	if (!error && gotone) {
+					    		JOptionPane.showMessageDialog(null, "Replaced successfully", "Compare Complete", JOptionPane.INFORMATION_MESSAGE);
+					    	} else if (error && gotone) {
+					    		JOptionPane.showMessageDialog(null, "Replaced partially", "Compare Complete", JOptionPane.INFORMATION_MESSAGE);
+					    	} else {
+					    		JOptionPane.showMessageDialog(null, "No files replaced", "Compare Complete", JOptionPane.INFORMATION_MESSAGE);
+					    	}
 					    } else if (answer == JOptionPane.NO_OPTION) {
 					    	System.out.println("you clicked no");
 					    }
