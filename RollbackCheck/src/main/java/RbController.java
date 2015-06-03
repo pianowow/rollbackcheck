@@ -74,44 +74,76 @@ public class RbController {
 					}
 					break;
 				case "Compare":
-					String message = "These files differ from trunk:" + NL;
-					File rbDir = new File(form.getTxtRBText());
-					String[] rbSubDirs = rbDir.list( DirectoryFileFilter.INSTANCE );
-					ArrayList<ArrayList<File>> differences = new ArrayList<ArrayList<File>>();
+					//String message = "These files differ from trunk:" + NL;
+					final StringBuffer message = new StringBuffer();
+					message.append("These files differ from trunk:" + NL);
+					final ArrayList<ArrayList<File>> differences = new ArrayList<ArrayList<File>>();
 					boolean diff = false;
-					ArrayList<File> difference;
-					for ( int i = 0; i < rbSubDirs.length; i++ ) {
-						String rbSubDirPath = FilenameUtils.concat(form.getTxtRBText(), rbSubDirs[i]);
-						String trunkSubDirPath = FilenameUtils.concat(form.getTxtTrunk(), rbSubDirs[i]);
-						File rbSubDir = new File(rbSubDirPath);
-						String[] rbSubFiles = rbSubDir.list( FileFileFilter.FILE);
-						boolean printedDirectory = false;
-						for ( int j = 0; j < rbSubFiles.length; j++ ) {
-							String rbFilePath = FilenameUtils.concat(rbSubDirPath, rbSubFiles[j]);
-							String trunkFilePath = FilenameUtils.concat(trunkSubDirPath, rbSubFiles[j]);
-							File rbFile = new File(rbFilePath);
-							File trunkFile = new File(trunkFilePath);
-							try {
-								if (!FileUtils.contentEquals(rbFile, trunkFile)) {
-									if (!printedDirectory) {
-										message += rbSubDirs[i] + NL;	
-										printedDirectory = true;
-									}
-									message += "      "+rbSubFiles[j] + NL;
-									difference = new ArrayList<File>();
-									difference.add(trunkFile);
-									difference.add(rbSubDir);
-									differences.add(difference);
+					
+					
+					class TreeWalker {
+						ArrayList<File> difference;
+						public boolean walk(String checkPath, String againstPath) {
+							boolean diff = false;
+							System.out.println(checkPath);
+							File checkDir = new File(checkPath);
+							String[] checkSubDirs = checkDir.list( DirectoryFileFilter.INSTANCE );
+							for ( int i = 0; i < checkSubDirs.length; i++ ) {
+								String checkSubDirPath = FilenameUtils.concat(checkPath, checkSubDirs[i]);
+								String againstSubDirPath = FilenameUtils.concat(againstPath, checkSubDirs[i]);	
+								if (this.walk2(checkSubDirPath, againstSubDirPath)) {
 									diff = true;
 								}
-							} catch (IOException e) {
-								e.printStackTrace();
-								System.out.println(rbSubFiles[j] + " exception");
 							}
+							return diff;
+						}
+						
+						private boolean walk2(String checkPath, String againstPath) {
+							boolean diff = false;
+							System.out.println(checkPath);
+							File checkDir = new File(checkPath);
+							//check files in this directory
+							String[] rbSubFiles = checkDir.list( FileFileFilter.FILE);
+							boolean printedDirectory = false;
+							for ( int i = 0; i < rbSubFiles.length; i++ ) {
+								String checkFilePath = FilenameUtils.concat(checkPath, rbSubFiles[i]);
+								String againstFilePath = FilenameUtils.concat(againstPath, rbSubFiles[i]);
+								File checkFile = new File(checkFilePath);
+								File againstFile = new File(againstFilePath);
+								try {
+									if (!FileUtils.contentEquals(checkFile, againstFile)) {
+										if (!printedDirectory) {
+											message.append(checkPath + NL);	
+											printedDirectory = true;
+										}
+										message.append("      "+rbSubFiles[i] + NL);
+										difference = new ArrayList<File>();
+										difference.add(againstFile);
+										difference.add(checkDir);
+										differences.add(difference);
+										diff = true;
+									}
+								} catch (IOException e) {
+									e.printStackTrace();
+									System.out.println(rbSubFiles[i] + " exception");
+								}
+							}
+							String[] checkSubDirs = checkDir.list( DirectoryFileFilter.INSTANCE );
+							for ( int i = 0; i < checkSubDirs.length; i++ ) {
+								String checkSubDirPath = FilenameUtils.concat(checkPath, checkSubDirs[i]);
+								String againstSubDirPath = FilenameUtils.concat(againstPath, checkSubDirs[i]);	
+								if (this.walk2(checkSubDirPath, againstSubDirPath)) {
+									diff = true;
+								}
+							}
+							return diff;
 						}
 					}
+					
+					diff = new TreeWalker().walk(form.getTxtRBText(), form.getTxtTrunk());
+					
 					if (diff) {
-						message += "Replace these rollback files with latest from trunk?" + NL;
+						message.append("Replace these rollback files with latest from trunk?" + NL);
 						System.out.println(message);
 					    int answer = JOptionPane.showConfirmDialog(form, message, "Replace rollback files?", JOptionPane.YES_NO_OPTION);
 					    if (answer == JOptionPane.YES_OPTION) {
@@ -150,4 +182,5 @@ public class RbController {
 		@Override
 		public void keyTyped(KeyEvent arg0) {}
 	}
+	
 }
