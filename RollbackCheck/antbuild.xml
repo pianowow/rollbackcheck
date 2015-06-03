@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project default="main" name="RollbackCheck">
+	<property name="src" location="src" />
+	<property name="build" location="build" />
+	<property name="dist" location="dist" />
+	<property name="lib" location="lib" />
+	<path id="classpath">
+		<fileset dir="${lib}" includes="**/*.jar" />
+	</path>
+
+	<target name="clean" description="clean up">
+		<delete dir="${build}" />
+		<delete dir="${dist}" />
+	</target>
+
+	<target name="init">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="compile" depends="init" description="compile the source ">
+		<!-- Compile the java code from ${src} into ${build} -->
+		<javac srcdir="${src}" destdir="${build}" classpathref="classpath" includeantruntime="false" source="1.7" />
+		<!-- executable="C:/Oracle/Programs/eclipse-luna/dcas-dev/jdk1.7/bin/javac" -->
+	</target>
+
+	<target name="jar" depends="compile">
+		<mkdir dir="${dist}" />
+		<jar destfile="${dist}/${ant.project.name}.jar" basedir="${build}">
+			<manifest>
+				<attribute name="Main-Class" value="main.java.RbController" />
+				<attribute name="Class-Path" value="lib/commons-io-2.4.jar" />
+			</manifest>
+			<archives>
+				<zips>
+					<fileset dir="lib" includes="**/*.jar" />
+				</zips>
+			</archives>
+		</jar>
+	</target>
+
+	<target name="run" depends="jar">
+		<java jar="${dist}/${ant.project.name}.jar" fork="true" />
+	</target>
+
+	<target name="clean-build" depends="clean,jar" />
+
+	<target name="main" depends="clean,run" />
+
+</project>
