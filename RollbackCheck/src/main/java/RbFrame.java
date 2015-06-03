@@ -20,7 +20,7 @@ public class RbFrame extends JFrame {
 		setSize(430,220);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		setResizable(false);
-		setTitle("Compare Rollback Objects to Trunk");
+		setTitle("Rollback Check - by Chris Irwin");
 		getContentPane().setLayout(null);
 		
 		txtRB = new JTextField();
