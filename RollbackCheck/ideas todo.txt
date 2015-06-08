@@ -1,2 +1,5 @@
+compare release scripts with SCR scripts (dml and ddl)
+
+ensure objects in rollback folder exist in rollback script and vice versa
 
 eclipse plugin
